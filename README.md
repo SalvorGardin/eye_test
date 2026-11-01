@@ -41,7 +41,7 @@ OPENSPEC_TELEMETRY=0 .tools/bin/openspec validate camera-vision-demo --strict
 pnpm package:library
 ```
 
-Готовый архив: `artifacts/gigadoc-video-analysis-0.1.0.tgz`. Его можно установить в другом проекте через `npm install ./gigadoc-video-analysis-0.1.0.tgz` или `pnpm add`. В архив включены модели и WASM.
+Готовый архив: `artifacts/gigadoc-video-analysis-0.2.0.tgz`. Его можно установить в другом проекте через `npm install ./gigadoc-video-analysis-0.2.0.tgz` или `pnpm add`. В архив включены модели и WASM.
 
 Полная инструкция и API: [docs/video-analysis.md](docs/video-analysis.md). Самостоятельный пример-потребитель: [examples/integration](examples/integration), использует пакет из архива, а не исходники демо. После сборки архива выполните `pnpm --dir examples/integration install`, затем `pnpm --dir examples/integration dev`.
 
@@ -110,3 +110,9 @@ pnpm exec vite preview --base /eye_test/ --host 127.0.0.1
 Откройте `http://127.0.0.1:4173/eye_test/`. После первой публикации проверьте оба режима и запуск камеры на реальном iPad: локальная сборка не заменяет проверку браузера устройства.
 
 Схема публикации соответствует [официальной инструкции Vite для GitHub Pages](https://vite.dev/guide/static-deploy#github-pages).
+
+## Размещение на собственном сервере
+
+Для `https://darkciz.ru/eye-test/`: `pnpm run build:server` создаёт `dist-server/`. Подробности установки, текущий статус сервера и команда завершения: [docs/darkciz-deployment.md](docs/darkciz-deployment.md).
+
+В панели камеры обоих режимов доступно цифровое увеличение 1–3×. Оно применяется к превью и кадру анализа. После смены масштаба калибровка повторяется, принятые ответы сохраняются. Настройка действует до перезагрузки страницы. В библиотеке 0.2.0 доступны `VideoAnalyzer.create({ assetsBaseUrl, zoom })`, `analyzer.setZoom(zoom)` и `analyzer.zoom`; внешний проект сбрасывает свою калибровку самостоятельно.

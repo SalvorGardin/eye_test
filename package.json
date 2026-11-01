@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node scripts/assets.mjs && vite --host 0.0.0.0",
     "build": "node scripts/assets.mjs && tsc --noEmit && vite build",
+    "build:server": "pnpm run build --base /eye-test/ --outDir dist-server",
     "build:library": "node scripts/build-library.mjs",
     "package:library": "pnpm build:library && pnpm --dir dist-library pack --pack-destination ../artifacts",
     "preview": "vite preview --host 0.0.0.0",

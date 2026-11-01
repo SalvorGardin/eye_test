@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@gigadoc/video-analysis':
-        specifier: file:../../artifacts/gigadoc-video-analysis-0.1.0.tgz
-        version: file:../../artifacts/gigadoc-video-analysis-0.1.0.tgz
+        specifier: file:../../artifacts/gigadoc-video-analysis-0.2.0.tgz
+        version: file:../../artifacts/gigadoc-video-analysis-0.2.0.tgz
     devDependencies:
       typescript:
         specifier: 7.0.2
@@ -21,9 +21,9 @@ importers:
 
 packages:
 
-  '@gigadoc/video-analysis@file:../../artifacts/gigadoc-video-analysis-0.1.0.tgz':
-    resolution: {integrity: sha512-GDNsuWBYYEOL8K2+toQ8TvdmOt4pkXVJ2EJjHJ75+MlvFQNRMCM4qFBAKtydm6f2aZgiPYwmvT2DjfFNug6rVg==, tarball: file:../../artifacts/gigadoc-video-analysis-0.1.0.tgz}
-    version: 0.1.0
+  '@gigadoc/video-analysis@file:../../artifacts/gigadoc-video-analysis-0.2.0.tgz':
+    resolution: {integrity: sha512-eZhtn11FvmICKYvz/gqQvtGcdvYPVzWcgLbYJXK4m1MWB2RByf4/qnCCNkfhC+NIElBJOUQEgc9EgrrYqxMjgw==, tarball: file:../../artifacts/gigadoc-video-analysis-0.2.0.tgz}
+    version: 0.2.0
 
   '@mediapipe/tasks-vision@1.2.0':
     resolution: {integrity: sha512-7+dr9GbGyTtcuLh11wE5TOn4dNFRncIT9oAWs72620WX99KW5FfzF6rFJ/ChTgXG9vJ6dCiE9FrEEY4CnwPWKQ==}
@@ -421,7 +421,7 @@ packages:
 
 snapshots:
 
-  '@gigadoc/video-analysis@file:../../artifacts/gigadoc-video-analysis-0.1.0.tgz':
+  '@gigadoc/video-analysis@file:../../artifacts/gigadoc-video-analysis-0.2.0.tgz':
     dependencies:
       '@mediapipe/tasks-vision': 1.2.0
 

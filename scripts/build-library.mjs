@@ -14,7 +14,7 @@ for (const name of (await readdir(output)).filter(name => name.endsWith('.d.ts')
 const project = JSON.parse(await readFile(new URL('package.json', root), 'utf8'));
 await writeFile(new URL('package.json', output), JSON.stringify({
   name: '@gigadoc/video-analysis',
-  version: '0.1.0',
+  version: '0.2.0',
   description: 'Browser video analysis: screen gaze, hand-over-eye detection and calibration',
   private: true,
   type: 'module',

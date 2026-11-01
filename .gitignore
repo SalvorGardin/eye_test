@@ -1,6 +1,7 @@
 .tools/
 node_modules/
 dist/
+dist-server/
 public/wasm/
 .pnpm-store/
 dist-library/

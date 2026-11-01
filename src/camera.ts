@@ -25,6 +25,15 @@ export class Camera {
   private decodedSerial = 0;
   private processedSerial = 0;
   running = false;
+  private zoomValue = 1;
+  get zoom() { return this.zoomValue; }
+
+  setZoom(zoom: number) {
+    if (!Number.isFinite(zoom) || zoom < 1 || zoom > 3) throw new RangeError('zoom must be between 1 and 3');
+    this.analyzer?.setZoom(zoom);
+    this.zoomValue = zoom;
+    this.video.style.transform = `scaleX(-1) scale(${zoom})`;
+  }
 
   constructor(video: HTMLVideoElement, onObservation: (o: Observation) => void, baseline: () => Baseline | null, onError: (message: string) => void) {
     this.video = video; this.onObservation = onObservation; this.baseline = baseline; this.onError = onError;
@@ -47,6 +56,7 @@ export class Camera {
       onProgress('Загружаем распознавание на устройство…');
       const analyzer = await VideoAnalyzer.create({ assetsBaseUrl: import.meta.env.BASE_URL });
       if (cancelled()) { analyzer.close(); return false; }
+      analyzer.setZoom(this.zoomValue);
       this.analyzer = analyzer;
       this.running = true;
       if ('requestVideoFrameCallback' in this.video) this.videoFrame = this.video.requestVideoFrameCallback(this.decoded);

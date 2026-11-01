@@ -69,3 +69,29 @@ test('failed initialization frees partial models and preserves failure', async t
   await assert.rejects(VideoAnalyzer.create({ assetsBaseUrl: '/assets' }), /Model missing/);
   assert.equal(closed, 2);
 });
+
+test('zoom crops the same frame for both models, reuses canvas and validates input', async t => {
+  const draws: unknown[][] = [], inputs: unknown[] = [];
+  let created = 0;
+  const canvas = { width: 0, height: 0, getContext: () => ({ drawImage: (...args: unknown[]) => draws.push(args) }) };
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: { createElement: (tag: string) => { assert.equal(tag, 'canvas'); created++; return canvas; } } });
+  t.after(() => { Reflect.deleteProperty(globalThis, 'document'); });
+  t.mock.method(FilesetResolver, 'forVisionTasks', async () => ({}));
+  t.mock.method(FaceLandmarker, 'createFromOptions', async () => ({ detectForVideo: (frame: unknown) => { inputs.push(frame); return { faceLandmarks: [] }; }, close() {} }));
+  t.mock.method(HandLandmarker, 'createFromOptions', async () => ({ detectForVideo: (frame: unknown) => { inputs.push(frame); return { landmarks: [] }; }, close() {} }));
+  for (const zoom of [0, 0.9, 3.1, NaN, Infinity]) await assert.rejects(VideoAnalyzer.create({ assetsBaseUrl: '/assets', zoom }), RangeError);
+  const a = await VideoAnalyzer.create({ assetsBaseUrl: '/assets', zoom: 2 });
+  assert.equal(a.zoom, 2);
+  a.analyze(video, 1);
+  assert.deepEqual(draws[0], [video, 160, 120, 320, 240, 0, 0, 640, 480]);
+  assert.equal(inputs[0], canvas); assert.equal(inputs[1], canvas);
+  const portrait = { readyState: 4, videoWidth: 480, videoHeight: 640 } as HTMLVideoElement;
+  a.analyze(portrait, 2);
+  assert.deepEqual(draws[1], [portrait, 120, 160, 240, 320, 0, 0, 480, 640]);
+  assert.equal(created, 1);
+  assert.throws(() => a.setZoom(4), RangeError); assert.equal(a.zoom, 2);
+  a.setZoom(1); a.analyze(video, 3);
+  assert.equal(inputs.at(-1), video); assert.equal(draws.length, 2);
+  a.close(); assert.equal(canvas.width, 0); assert.equal(canvas.height, 0);
+  assert.throws(() => a.setZoom(2), /closed/);
+});

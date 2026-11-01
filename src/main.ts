@@ -21,6 +21,8 @@ $('#app').innerHTML = `
         <div class="camera-card">
           <div class="card-heading"><span>Камера</span><span id="camera-label" class="small-status">Выключена</span></div>
           <div class="video-wrap"><video id="video" autoplay playsinline muted aria-label="Зеркальное изображение с вашей камеры"></video><div id="camera-placeholder">${mark}<span>Здесь появится<br>изображение с камеры</span></div><div class="face-guide" aria-hidden="true"></div><span class="mirror-tag">Зеркальное изображение</span></div>
+          <label class="zoom-control" for="camera-zoom">Увеличение <select id="camera-zoom" aria-describedby="zoom-hint"><option value="1">1×</option><option value="1.5">1,5×</option><option value="2">2×</option><option value="2.5">2,5×</option><option value="3">3×</option></select></label>
+          <p id="zoom-hint" class="helper">Держите лицо и ладонь в кадре. Изменение масштаба повторит настройку.</p>
           <div class="indicators">
             <div class="indicator"><span>Взгляд на экран</span><strong id="gaze" data-state="unknown">Не определён</strong></div>
             <div class="indicator"><span>Левый глаз</span><strong id="left-eye" data-state="unknown">Не определён</strong></div>
@@ -160,6 +162,8 @@ function render() {
   $('#stop-camera').hidden = !camera.running && !loading;
   $('#camera-placeholder').hidden = camera.running;
   $('.face-guide').hidden = !camera.running;
+  const video = $<HTMLVideoElement>('#video');
+  if (video.videoWidth && video.videoHeight) $('.video-wrap').style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
   setText('#camera-label', loading ? 'Подключение' : camera.running ? 'Включена' : 'Выключена');
   const fresh = camera.running && !document.hidden && now - observation.at <= LIMITS.staleMs;
   const values = { gaze: fresh ? observation.gaze : null, 'left-eye': fresh ? observation.covered.left : null, 'right-eye': fresh ? observation.covered.right : null };
@@ -184,7 +188,7 @@ function render() {
     const current = fresh ? observation : unknown(observation.at, camera.running ? 'Нет свежего кадра' : 'Камера выключена');
     setText('#api-freshness', fresh ? 'Обновляется' : 'Нет свежих данных');
     setText('#api-result', JSON.stringify({ valid: current.valid, gaze: current.gaze, covered: current.covered, reason: current.reason }, null, 2));
-    setText('#api-full', JSON.stringify({ observation: current, calibration: { step: calibration.step, progress: calibration.progress, baseline: calibration.baseline } }, null, 2));
+    setText('#api-full', JSON.stringify({ zoom: camera.zoom, observation: current, calibration: { step: calibration.step, progress: calibration.progress, baseline: calibration.baseline } }, null, 2));
   }
   if (screen === 'calibration') {
     setText('#orientation-note', orientationNote);
@@ -248,6 +252,11 @@ function respond(direction: Direction | null, token: number) {
     else render();
   }
 }
+
+$('#camera-zoom').addEventListener('change', event => {
+  camera.setZoom(Number((event.target as HTMLSelectElement).value));
+  recalibrate('Масштаб изменился. Повторим настройку; принятые ответы сохранены.');
+});
 
 $('#app').addEventListener('click', event => {
   const id = (event.target as HTMLElement).closest('button')?.id;
