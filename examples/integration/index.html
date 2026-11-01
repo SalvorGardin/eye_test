@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Подключение библиотеки анализа видео</title>
+  <style>
+    body{font:16px/1.5 system-ui,sans-serif;max-width:840px;margin:40px auto;padding:0 20px;background:#f5f5ef;color:#263c32}
+    h1{font-size:30px;line-height:1.2}video{display:block;width:100%;max-width:480px;aspect-ratio:4/3;object-fit:contain;background:#e1e8d8;border-radius:12px;transform:scaleX(-1);margin:20px 0}
+    button{font:inherit;padding:12px 18px;margin:4px 8px 4px 0;border:1px solid #b9c8aa;border-radius:8px;background:#fff;cursor:pointer;min-height:48px}button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:3px solid #ca7848;outline-offset:3px}
+    #status{padding:16px;background:#e6eddb;border-radius:10px}pre{white-space:pre-wrap;background:white;padding:20px;border-radius:10px;font-size:13px}progress{width:100%}.muted{font-size:13px;color:#6d7868}
+  </style>
+</head>
+<body>
+  <h1>Анализ видео в другом проекте</h1>
+  <p>Этот пример использует установленный пакет <code>@gigadoc/video-analysis</code>. Без интерфейса теста зрения.</p>
+  <button id="start">Включить камеру</button><button id="test">Тестовый поток без камеры</button><button id="stop" disabled>Остановить</button><button id="reset" disabled>Сбросить калибровку</button>
+  <p id="status" role="status">Видео и модели не запущены.</p>
+  <video id="video" autoplay playsinline muted aria-label="Видео для анализа"></video>
+  <p id="calibration"></p><progress id="progress" max="1" value="0" aria-label="Прогресс калибровки"></progress>
+  <pre id="result">Результатов пока нет.</pre>
+  <p class="muted">Левый и правый — со стороны пользователя. null означает «не удалось определить». Тестовый поток не содержит лица: он проверяет загрузку моделей, а не распознавание человека. Для настоящей камеры на iPad нужен HTTPS.</p>
+  <script type="module" src="/main.ts"></script>
+</body>
+</html>

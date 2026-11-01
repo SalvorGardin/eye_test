@@ -1,0 +1,8 @@
+.tools/
+node_modules/
+dist/
+public/wasm/
+.pnpm-store/
+dist-library/
+artifacts/
+examples/integration/public/video-analysis/

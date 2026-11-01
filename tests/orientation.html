@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><title>Проверка ориентации</title>
+<style>body{margin:12px;font:14px system-ui}button{padding:12px}iframe{display:block;border:1px solid #aaa;margin-top:12px}</style>
+<button id="portrait">Книжная 768 × 1024</button>
+<button id="landscape">Альбомная 1024 × 768</button>
+<output id="layout"></output>
+<iframe id="preview" title="Приложение" src="/tests/browser.html" width="768" height="1024"></iframe>
+<script type="module">
+const frame = document.querySelector('iframe');
+document.querySelector('#portrait').onclick = () => { frame.width = '768'; frame.height = '1024'; };
+document.querySelector('#landscape').onclick = () => { frame.width = '1024'; frame.height = '768'; };
+setInterval(() => {
+  const doc = frame.contentDocument;
+  if (!doc?.querySelector('.workspace')) return;
+  document.querySelector('#layout').textContent = `${frame.width} × ${frame.height}; ширина содержимого ${doc.documentElement.scrollWidth}; колонки ${frame.contentWindow.getComputedStyle(doc.querySelector('.workspace')).gridTemplateColumns}`;
+}, 250);
+</script></html>

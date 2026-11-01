@@ -1,0 +1,145 @@
+# @gigadoc/video-analysis
+
+Независимый браузерный модуль для приблизительной оценки взгляда на экран и прикрытия левого/правого глаза рукой. Работает локально на устройстве. Не содержит интерфейса, теста зрения, React, CSS, обращения к камере или переменных Vite.
+
+## Подключение к другому проекту
+
+1. Передайте архив `gigadoc-video-analysis-0.1.0.tgz` в другой проект и установите:
+
+```sh
+npm install ./gigadoc-video-analysis-0.1.0.tgz
+```
+
+Для pnpm: `pnpm add ./gigadoc-video-analysis-0.1.0.tgz`. Публикация в npm не нужна. Пакет содержит ESM JavaScript, TypeScript-типы, модели и WASM; MediaPipe устанавливается как зависимость. Для сборщика подходят Vite, Webpack и другие сборщики ESM. В Next.js вызовы камеры и create() выполняйте на клиенте, не при серверном рендеринге. Импорт пакета сам по себе не запускает браузерные API.
+
+2. Скопируйте ресурсы в публичный каталог вашего приложения. Например, сохраните следующий код в `copy-video-assets.mjs` и запустите `node copy-video-assets.mjs` (Node 22.18+):
+
+```js
+import { cp, mkdir } from 'node:fs/promises';
+const assets = new URL('./assets/', import.meta.resolve('@gigadoc/video-analysis/package.json'));
+await mkdir('public', { recursive: true });
+await cp(assets, 'public/video-analysis', { recursive: true });
+```
+
+Пути на сайте должны быть `/video-analysis/models/face_landmarker.task`, `/video-analysis/models/hand_landmarker.task` и `/video-analysis/wasm/…`. Передавайте другой `assetsBaseUrl`, если приложение размещено в подкаталоге. Каталог может быть и абсолютным HTTPS-URL; тогда настройте CORS на сервере ресурсов. Библиотека не отправляет кадры на этот адрес — она только загружает файлы моделей.
+
+3. Используйте свой `<video autoplay playsinline muted>` и поток. Минимальная схема обработки:
+
+```ts
+import { VideoAnalyzer, Calibration } from '@gigadoc/video-analysis';
+
+const analyzer = await VideoAnalyzer.create({ assetsBaseUrl: '/video-analysis/' });
+const calibration = new Calibration();
+
+// В вашем обработчике нового кадра, например requestVideoFrameCallback:
+function analyzeFrame(video: HTMLVideoElement, now: number) {
+  const result = analyzer.analyze(video, now, calibration.baseline);
+  calibration.update(result, now);
+
+  // Перед каждым этапом покажите пользователю соответствующую инструкцию.
+  console.log(calibration.step, calibration.progress, calibration.hint);
+  console.log(result.gaze, result.covered.left, result.covered.right);
+}
+
+// При завершении / размонтировании компонента:
+// 1. Отмените ваш цикл обработки кадров.
+// 2. Освободите модели.
+analyzer.close();
+// 3. Остановите свои видеодорожки, если камера больше не нужна.
+```
+
+Этот фрагмент показывает вызовы, не запускает цикл. Полный запускаемый пример лежит в `example/` внутри пакета; в исходном проекте — `examples/integration/`. Он включает получение камеры, калибровку, ограничение до примерно 10 анализов/с, обработку ошибок, контроль свежести, отмену запуска, повторный старт и освобождение ресурсов. Кнопка тестового потока позволяет проверить загрузку моделей без доступа к камере.
+
+## API
+
+### `VideoAnalyzer.create({ assetsBaseUrl }): Promise<VideoAnalyzer>`
+
+`assetsBaseUrl` — обязательная непустая строка, URL каталога с `models/` и `wasm/`, со слешем в конце или без него. Сначала загружается GPU-вариант, при ошибке инициализации — CPU. При неудаче Promise отклоняется; частично созданные модели освобождаются. Вызов не запрашивает камеру и не меняет DOM. Создавайте один экземпляр на свой видеопоток, не на каждый кадр.
+
+### `analyzer.analyze(video, timestampMs, baseline = null): Observation`
+
+Синхронно анализирует один кадр уже запущенного `HTMLVideoElement`.
+
+- Время: конечное неотрицательное число в миллисекундах, обычно timestamp из `requestVideoFrameCallback` или `performance.now()`. Для успешно отправленных на анализ кадров значения строго возрастают в пределах экземпляра. Повтор/уменьшение/NaN → `RangeError`.
+- Не готовое видео → `valid: false`, неизвестные состояния; запрос разрешения камеры не выполняется.
+- `baseline` — результат калибровки. Без него `gaze` равен `null`; распознавание прикрытия рукой работает независимо.
+- Ошибки inference пробрасываются вызывающему приложению. Прекратите цикл и закройте анализатор при невосстановимой ошибке.
+- При работе в фоновой вкладке не вызывайте анализ. Устаревший последний результат нельзя считать действительным. Ограничивайте частоту; синхронный inference занимает главный поток.
+
+```ts
+type Observation = {
+  at: number;                  // переданный timestampMs, шкала performance.now()
+  valid: boolean;              // найдена пригодная геометрия одного лица
+  reason: string;              // подсказка при неизвестном состоянии
+  gaze: boolean | null;       // взгляд приблизительно на экран
+  covered: {
+    left: boolean | null;     // левый глаз пользователя прикрыт рукой
+    right: boolean | null;    // правый глаз пользователя прикрыт рукой
+  };
+  signals: Baseline | null;   // нормированные признаки для калибровки
+};
+```
+
+`true` = признак обнаружен, `false` = не обнаружен, `null` = данных недостаточно. `valid: true` не означает, что взгляд откалиброван или пользователь соблюдает условия теста. Не сводите `null` к `false`.
+
+Стороны анатомические, со стороны пользователя. Передавайте исходное незеркальное видео; зеркальное отображение делайте через CSS (`transform: scaleX(-1)`).
+
+### `analyzer.close(): void`
+
+Закрывает модели. Повторный вызов безопасен. После close() анализ отклоняется ошибкой. Для повторного запуска создайте новый экземпляр. Закрытие не вызывает `video.pause()` и не останавливает `MediaStreamTrack`: поток принадлежит подключающему проекту. Если create() завершился после отмены запуска, закройте полученный экземпляр (пример это учитывает).
+
+### `Calibration`
+
+- `new Calibration()` / `reset()` — новая настройка.
+- `update(observation, now)` — передать свежий результат, `now` в той же шкале времени.
+- `step`: `center` → `left` → `right` → `done`.
+- `center`: показать точку, попросить смотреть на неё с открытыми глазами около 2 секунд.
+- `left`: попросить прикрыть левый глаз ладонью около секунды, смотреть правым.
+- `right`: прикрыть правый глаз, смотреть левым.
+- `progress`: 0…1 внутри текущего этапа; на переходе сбрасывается. Проверяйте `step === 'done'` для завершения.
+- `hint`: текущая подсказка; на новом этапе показывайте также инструкцию по `step`.
+- `baseline`: параметры взгляда, появляются после этапа `center`; передавайте в analyze(). Не сохраняйте их между людьми или изменениями положения устройства.
+
+Весь процесс с прикрытием руки полезен для проверки сценария. Если нужен только взгляд, достаточно этапа `center` и полученного baseline; остальные этапы можно не проходить. Сбросьте калибровку при повороте устройства/смене пользователя.
+
+### Чистые функции и типы
+
+`observe(faces, hands, timestampMs, baseline)` принимает уже полученные нормированные ориентиры MediaPipe и возвращает Observation без загрузки моделей. Полезно, если MediaPipe уже подключён в вашем проекте.
+
+`unknown(timestampMs, reason?)` создаёт неизвестный результат. `LIMITS.staleMs` — используемый демо предел возраста результата (750 мс).
+
+`condition(observation, testedEye, now)` возвращает `null`, когда условия проверки одного глаза соблюдены, или текст подсказки. Эта функция дополнительно проверяет свежесть, наличие прикрытия другого глаза и открытость проверяемого. Для своих сценариев используйте Observation напрямую.
+
+Экспортируются типы `VideoAnalyzerOptions`, `Observation`, `Baseline`, `Eye`, `EyeSignal`, `Point`. Чистую часть можно импортировать отдельно: `@gigadoc/video-analysis/core`.
+
+## Ресурсы и ограничения
+
+Модели: официальные Google MediaPipe Face Landmarker и Hand Landmarker, пути версии `float16/1`. WASM соответствует закреплённой версии `@mediapipe/tasks-vision` 1.2.0; не смешивайте версии runtime и WASM. Включены оригинальные служебные/лицензионные заголовки WASM-loader файлов; MediaPipe распространяется на условиях Apache-2.0.
+
+- https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+- https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+
+Остались те же эвристики: положение радужек/головы и перекрытие области глаза многоугольником руки. Это не медицинское измерение и не защита от подсматривания. Прикрытие ладонью может мешать распознаванию лица. Настройка внешнего проекта не должна превращать неизвестный результат в положительный.
+
+Получение камеры требует HTTPS (либо localhost на компьютере) и разрешения пользователя. Пакет ESM предназначен для браузерного использования через сборщик; CommonJS и серверный inference не предоставляются.
+
+## Сборка из исходного проекта
+
+```sh
+pnpm install --frozen-lockfile
+pnpm test
+pnpm build:library
+pnpm package:library
+```
+
+Готовый каталог — `dist-library/`, устанавливаемый архив — `artifacts/gigadoc-video-analysis-0.1.0.tgz`. Сборка пакета не публикует его во внешний реестр.
+
+Проверка отдельного потребителя из корня исходного проекта:
+
+```sh
+pnpm --dir examples/integration install
+pnpm --dir examples/integration build
+pnpm --dir examples/integration dev
+```
+
+Откройте `http://localhost:5174`. Для запуска вложенного `example/` из установленного пакета скопируйте его в отдельную папку, установите `@gigadoc/video-analysis` из архива, а также `typescript` и `vite`, затем выполните `node copy-assets.mjs` и `npx vite`.
